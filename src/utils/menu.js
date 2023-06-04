@@ -44,6 +44,18 @@ async function promptCreateApplicant () {
 async function promptApproveApplicant () {
   const options = await inquirer.prompt([
     {
+      type: 'boolean',
+      name: 'isHeadless',
+      message: 'Hide browser?',
+      default: false // TODO: set me to true
+    },
+    {
+      type: 'input',
+      name: 'chuckUrl',
+      message: 'Chuck URL',
+      default: 'https://chuck-pr22205.nestiostaging.com/' // TODO: strip me out
+    },
+    {
       type: 'email',
       name: 'email',
       message: 'Email',
