@@ -13,6 +13,9 @@ async function createBrowserWithPage (isHeadless, url) {
 
   const page = await browser.newPage()
 
+  // This is so Google Authentication works
+  await page.setBypassCSP(true)
+
   await page.goto(url)
 
   await page.addScriptTag({
