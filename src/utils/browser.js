@@ -19,6 +19,27 @@ async function waitForSelector (selector, interval = 100, maxAttempts = 10) {
   })
 }
 
+async function pollUntilTrue (fn, interval = 100, maxAttempts = 10) {
+  let attempts = 0
+
+  return new Promise((resolve, reject) => {
+    const checkFn = () => {
+      attempts++
+
+      if (fn()) {
+        resolve()
+      } else if (attempts < maxAttempts) {
+        setTimeout(checkFn, interval)
+      } else {
+        reject(new Error(`Failed to resolve function: ${fn}`))
+      }
+    }
+
+    checkFn()
+  })
+}
+
 module.exports = {
-  waitForSelector
+  waitForSelector,
+  pollUntilTrue
 }

@@ -1,6 +1,6 @@
 const puppeteer = require('puppeteer')
 const { createEmail } = require('./utils/generator')
-const { waitForSelector } = require('./utils/browser')
+const { waitForSelector, pollUntilTrue } = require('./utils/browser')
 
 const WOODHOUSE_URL = 'http://woodhouse-pr1691.nestiostaging.com/6/welcome'
 
@@ -170,13 +170,13 @@ async function stepLeaseTerms (page) {
   await submit()
 }
 
-// TODO: this shit is buggy af
 // TODO: make it possible possible to select rental options now (add a person, gurantor, pet, parking, storage, wine cooler etc.)
 async function stepSetupRentalProfile (page) {
+  await page.waitForSelector('#co_applicants')
+
   await page.evaluate(() => {
     return new Promise((resolve, reject) => {
       (async () => {
-        await waitForSelector('#co_applicants')
         await waitForSelector('button[type="submit"]')
 
         const buttons = Array.from(document.querySelectorAll('button'))
@@ -184,6 +184,78 @@ async function stepSetupRentalProfile (page) {
 
         btnAgree.click()
         resolve()
+      })()
+    })
+  })
+}
+
+async function stepVerifyIncome (page) {
+  await page.waitForSelector('img[alt="padlock"]')
+
+  await page.evaluate(() => {
+    return new Promise((resolve) => {
+      const buttons = Array.from(document.querySelectorAll('button'))
+      const btnNoIncome = buttons.find((btn) => btn.textContent.includes("I Don't Have Income or Assets"))
+      btnNoIncome.click()
+      resolve()
+    })
+  })
+}
+
+async function stepConfirmIncome (page) {
+  await page.waitForSelector('img[alt="coin"]')
+
+  await page.evaluate(() => {
+    return new Promise((resolve) => {
+      const buttons = Array.from(document.querySelectorAll('button'))
+      const btnSubmitConfirmIncome = buttons.find((btn) => btn.textContent.includes('Continue'))
+      btnSubmitConfirmIncome.click()
+      resolve()
+    })
+  })
+}
+
+async function stepScreeningDetails (page) {
+  await page.waitForSelector('img[alt="portfolio"]')
+
+  await page.evaluate(() => {
+    return new Promise((resolve) => {
+      (async () => {
+        const radioNoSecurityNumber = await waitForSelector('input[value="false"]')
+        radioNoSecurityNumber.click()
+
+        const checkAuthorizeFunnel = await waitForSelector('input[name="disclaimer"]')
+        checkAuthorizeFunnel.click()
+
+        const btnSubmitScreening = await waitForSelector('button[type="submit"]')
+        btnSubmitScreening.click()
+
+        resolve()
+      })()
+    })
+  })
+}
+
+async function stepApplicationPayments (page) {
+  await page.waitForSelector('img[alt="wallet"]')
+
+  await page.evaluate(() => {
+    return new Promise((resolve) => {
+      const btnSubmitApplicationPayments = document.querySelector('button[type="submit"]')
+      btnSubmitApplicationPayments.click()
+      resolve()
+    })
+  })
+}
+
+async function stepPaymentTerms (page) {
+  await page.evaluate(() => {
+    return new Promise((resolve) => {
+      (async () => {
+        const btnSubmit = document.querySelector('button[type="submit"]')
+        await pollUntilTrue(() => btnSubmit.disabled === false)
+
+        btnSubmit.click()
       })()
     })
   })
@@ -199,7 +271,7 @@ async function main () {
   await page.goto(WOODHOUSE_URL)
 
   await page.addScriptTag({
-    content: `${waitForSelector}`
+    content: `${waitForSelector} ${pollUntilTrue}`
   })
 
   await page.setViewport({ width: 1080, height: 1024 })
@@ -209,61 +281,13 @@ async function main () {
   await stepCurrentAddress(page)
   await stepLeaseTerms(page)
   await stepSetupRentalProfile(page)
+  await stepVerifyIncome(page)
+  await stepConfirmIncome(page)
+  await stepScreeningDetails(page)
+  await stepApplicationPayments(page)
+  await stepPaymentTerms(page)
 
   await wait(500000000)
-
-  process.exit(0)
-
-  // Wait for the Verify income page, then click the "I don't have income or assets" button
-  await page.waitForSelector('img[alt="padlock"]')
-
-  await page.evaluate(() => {
-    const buttons = Array.from(document.querySelectorAll('button'))
-    const btnNoIncome = buttons.find((btn) => btn.textContent.includes("I Don't Have Income or Assets"))
-    btnNoIncome.click()
-  })
-
-  await page.waitForSelector('img[alt="coin"]')
-
-  await wait(1000)
-
-  const btnSubmitConfirmIncome = await page.waitForSelector('button[type="submit"]')
-  await btnSubmitConfirmIncome.click()
-
-  await wait(2000)
-
-  const radioNoSecurityNumber = await page.waitForSelector('input[value="false"]')
-  await radioNoSecurityNumber.click()
-
-  const checkAuthorizeFunnel = await page.waitForSelector('input[name="disclaimer"]')
-  await checkAuthorizeFunnel.click()
-
-  const btnSubmitScreening = await page.waitForSelector('button[type="submit"]')
-  await btnSubmitScreening.click()
-
-  await wait(1000)
-
-  // Application Payments
-  await page.waitForSelector('img[alt="wallet"]')
-
-  const btnSubmitApplicationPayments = await page.waitForSelector('button[type="submit"]')
-  await btnSubmitApplicationPayments.click()
-
-  // Payment Terms
-
-  await wait(3500)
-
-  await page.evaluate(() => {
-    const buttons = Array.from(document.querySelectorAll('button'))
-
-    console.log(buttons)
-
-    const btnAgree = buttons.find((btn) => btn.textContent.includes('Agree and Continue'))
-
-    console.log(btnAgree)
-
-    btnAgree.click()
-  })
 }
 
 main()
