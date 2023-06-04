@@ -170,6 +170,25 @@ async function stepLeaseTerms (page) {
   await submit()
 }
 
+// TODO: this shit is buggy af
+// TODO: make it possible possible to select rental options now (add a person, gurantor, pet, parking, storage, wine cooler etc.)
+async function stepSetupRentalProfile (page) {
+  await page.evaluate(() => {
+    return new Promise((resolve, reject) => {
+      (async () => {
+        await waitForSelector('#co_applicants')
+        await waitForSelector('button[type="submit"]')
+
+        const buttons = Array.from(document.querySelectorAll('button'))
+        const btnAgree = buttons.find((btn) => btn.textContent.includes('Continue'))
+
+        btnAgree.click()
+        resolve()
+      })()
+    })
+  })
+}
+
 async function main () {
   const browser = await puppeteer.launch({
     headless: false
@@ -189,21 +208,11 @@ async function main () {
   await stepRentalApplication(page)
   await stepCurrentAddress(page)
   await stepLeaseTerms(page)
+  await stepSetupRentalProfile(page)
 
   await wait(500000000)
 
   process.exit(0)
-
-  // TODO: it's possible to select rental options now (add a person, gurantor, pet, parking, storage, wine cooler etc.)
-
-  await page.waitForSelector('#co_applicants')
-  const btnRentalProfileSubmit = await page.waitForSelector('button[type="submit"]')
-
-  console.log(btnRentalProfileSubmit)
-
-  await wait(1000)
-
-  await btnRentalProfileSubmit.click()
 
   // Wait for the Verify income page, then click the "I don't have income or assets" button
   await page.waitForSelector('img[alt="padlock"]')
