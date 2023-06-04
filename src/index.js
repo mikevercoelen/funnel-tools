@@ -35,6 +35,7 @@ async function wait (ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+// TODO: get rid of xpaths
 async function stepAccept (page) {
   // Click accept
   await page.waitForSelector('button[type="submit"]')
