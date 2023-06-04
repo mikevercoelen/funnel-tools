@@ -37,7 +37,8 @@ async function promptCreateApplicant () {
         {
           type: 'input',
           name: 'prId',
-          message: 'Please enter the PR ID (i.e. 123 NOT pr123)'
+          message: 'Please enter the Woodhouse PR ID (i.e. 123 NOT pr123)',
+          default: '1691' // TODO: remove me
         }
       ])
 
