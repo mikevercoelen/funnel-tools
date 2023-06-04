@@ -27,7 +27,7 @@ const STEP_CURRENT_ADDRESS = {
 
 // TODO: add moveInDate
 const STEP_LEASE_TERMS = {
-  unit: 'FF15',
+  unit: '',
   terms: '18'
 }
 
@@ -110,7 +110,7 @@ async function stepLeaseTerms (page) {
           const unitOptionsList = await waitForSelector('ul.MuiAutocomplete-listbox')
           const unitOptions = Array.from(unitOptionsList.querySelectorAll('li'))
 
-          const desiredUnitOption = STEP_LEASE_TERMS.unit
+          const desiredUnitOption = STEP_LEASE_TERMS?.unit !== ''
             ? unitOptions.find(o => o.textContent.includes(STEP_LEASE_TERMS.unit))
             : unitOptions[0]
 
