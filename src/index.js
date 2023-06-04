@@ -3,7 +3,7 @@ const { createEmail } = require('./utils/generator')
 
 async function main () {
   const options = {
-    isHeadless: false,
+    isHeadless: true,
     woodhouseUrl: 'http://woodhouse-pr1691.nestiostaging.com/6/welcome',
     firstName: 'John',
     lastName: 'Doe',
