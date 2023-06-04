@@ -408,7 +408,7 @@ async function createApplicant ({
     terms: ''
   }
 
-  info('Launching browser')
+  info(`Launching browser to ${woodhouseUrl}`)
 
   const browser = await puppeteer.launch({
     headless: isHeadless === true ? 'new' : false,
