@@ -1,6 +1,6 @@
-const puppeteer = require('puppeteer')
 const { waitForSelector, pollUntilTrue } = require('./utils/browser')
 const { info, success } = require('./utils/log')
+const { createBrowserWithPage } = require('./utils/puppeteer')
 
 const STEP_PAY = {
   // TODO: for some reason, the card number needs a first digit that can be ignored
@@ -408,25 +408,7 @@ async function createApplicant ({
     terms: ''
   }
 
-  info(`Launching browser to ${woodhouseUrl}`)
-
-  const browser = await puppeteer.launch({
-    headless: isHeadless === true ? 'new' : false,
-    protocolTimeout: 5000000,
-    timeout: 500000
-  })
-
-  const page = await browser.newPage()
-
-  await page.goto(woodhouseUrl)
-
-  await page.addScriptTag({
-    content: `${waitForSelector} ${pollUntilTrue}`
-  })
-
-  await page.setViewport({ width: 1080, height: 1024 })
-
-  info('Browser launched')
+  const { page, browser } = await createBrowserWithPage(isHeadless, woodhouseUrl)
 
   await stepAccept(page)
 
