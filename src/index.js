@@ -1,12 +1,13 @@
 const puppeteer = require('puppeteer')
 const { createEmail } = require('./utils/generator')
+const { waitForSelector } = require('./utils/browser')
 
 const WOODHOUSE_URL = 'http://woodhouse-pr1691.nestiostaging.com/6/welcome'
 
 const FIRST_NAME = 'John'
 const LAST_NAME = 'Doe'
 
-const USER_INFO = {
+const STEP_APPLICATION = {
   firstName: FIRST_NAME,
   lastName: LAST_NAME,
   email: createEmail(FIRST_NAME, LAST_NAME),
@@ -16,7 +17,7 @@ const USER_INFO = {
   acceptsTexts: true
 }
 
-const USER_INFO_CURRENT_ADDRESS = {
+const STEP_CURRENT_ADDRESS = {
   address: '1234 Main St',
   floor: '1',
   city: 'Denver',
@@ -24,32 +25,17 @@ const USER_INFO_CURRENT_ADDRESS = {
   zip: '80202'
 }
 
-const today = new Date()
-
-const tomorrow = new Date(today)
-tomorrow.setDate(tomorrow.getDate() + 1)
-
-// const USER_INFO_LEASE_TERMS = {
-//   moveInDate: getDateFormatted(tomorrow),
-//   unit: 'FF15',
-//   leaseTerm: '12'
-// }
+// TODO: add moveInDate
+const STEP_LEASE_TERMS = {
+  unit: 'FF15',
+  terms: '18'
+}
 
 async function wait (ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-async function main () {
-  const browser = await puppeteer.launch({
-    headless: false
-  })
-
-  const page = await browser.newPage()
-
-  await page.goto(WOODHOUSE_URL)
-
-  await page.setViewport({ width: 1080, height: 1024 })
-
+async function stepAccept (page) {
   // Click accept
   await page.waitForSelector('button[type="submit"]')
   await page.click('button[type="submit"]')
@@ -68,71 +54,144 @@ async function main () {
   await page.waitForXPath('//*[@id="root"]/div/div[1]/div[2]/div[2]/div[2]/button')
   const [agree] = await page.$x('//*[@id="root"]/div/div[1]/div[2]/div[2]/div[2]/button')
   await agree.click()
+}
 
-  // Fill in the user form
+async function stepRentalApplication (page) {
   await page.waitForSelector('input[name="first_name"]')
-  await page.type('input[name="first_name"]', USER_INFO.firstName)
-  await page.type('input[name="last_name"]', USER_INFO.lastName)
-  await page.type('input[name="email"]', USER_INFO.email)
-  await page.type('input[name="phone_number"]', USER_INFO.phone)
-  await page.type('#birthday-picker', USER_INFO.birthday)
-  await page.type('input[name="password"]', USER_INFO.password)
 
-  if (USER_INFO.acceptsTexts) {
+  await page.type('input[name="first_name"]', STEP_APPLICATION.firstName)
+  await page.type('input[name="last_name"]', STEP_APPLICATION.lastName)
+  await page.type('input[name="email"]', STEP_APPLICATION.email)
+  await page.type('input[name="phone_number"]', STEP_APPLICATION.phone)
+  await page.type('#birthday-picker', STEP_APPLICATION.birthday)
+  await page.type('input[name="password"]', STEP_APPLICATION.password)
+
+  if (STEP_APPLICATION.acceptsTexts) {
     await page.click('input[name="sms_opt_in"]')
   }
 
-  // Get the element that is the submit button
   await page.click('button[type="submit"]')
+}
 
-  // Fill in current address
+async function stepCurrentAddress (page) {
   await page.waitForSelector('input[name="address_street"]')
-  await page.type('input[name="address_street"]', USER_INFO_CURRENT_ADDRESS.address)
-  await page.type('input[name="address_line_2"]', USER_INFO_CURRENT_ADDRESS.floor)
-  await page.type('input[name="address_city"]', USER_INFO_CURRENT_ADDRESS.city)
-  await page.type('input[name="address_state"]', USER_INFO_CURRENT_ADDRESS.state)
-  await page.type('input[name="address_postal_code"]', USER_INFO_CURRENT_ADDRESS.zip)
+
+  await page.type('input[name="address_street"]', STEP_CURRENT_ADDRESS.address)
+  await page.type('input[name="address_line_2"]', STEP_CURRENT_ADDRESS.floor)
+  await page.type('input[name="address_city"]', STEP_CURRENT_ADDRESS.city)
+  await page.type('input[name="address_state"]', STEP_CURRENT_ADDRESS.state)
+  await page.type('input[name="address_postal_code"]', STEP_CURRENT_ADDRESS.zip)
 
   // Submit the form
   await page.keyboard.press('Enter')
+}
 
-  // Fill in lease terms
+// TODO: customize move-in-date
+async function stepLeaseTerms (page) {
+  async function selectUnit () {
+    await page.evaluate(({ STEP_LEASE_TERMS }) => {
+      return new Promise((resolve, reject) => {
+        (async () => {
+          const btnOpenSelectUnit = document.querySelector('button.MuiAutocomplete-popupIndicator')
+          btnOpenSelectUnit.click()
+
+          const unitOptionsList = await waitForSelector('ul.MuiAutocomplete-listbox')
+          const unitOptions = Array.from(unitOptionsList.querySelectorAll('li'))
+
+          const desiredUnitOption = STEP_LEASE_TERMS.unit
+            ? unitOptions.find(o => o.textContent.includes(STEP_LEASE_TERMS.unit))
+            : unitOptions[0]
+
+          if (!desiredUnitOption) {
+            return reject(new Error(`Could not find unit option ${STEP_LEASE_TERMS.unit}. Is it available?`))
+          }
+
+          desiredUnitOption.click()
+          resolve()
+        })()
+      })
+    }, {
+      STEP_LEASE_TERMS
+    })
+  }
+
+  async function selectLeaseTerm () {
+    await page.evaluate(({ STEP_LEASE_TERMS }) => {
+      return new Promise((resolve, reject) => {
+        (async () => {
+          const btnOpenLeaseTerms = document.querySelector('#lease-term')
+          btnOpenLeaseTerms.click()
+
+          const leaseTermsList = await waitForSelector('#menu-lease_term ul')
+
+          // The list goes into a loading state first, so we need to wait for it to finish, we can do that by querying for the second li
+          await waitForSelector('#menu-lease_term ul li:nth-child(2)')
+
+          const leaseTermsOptions = Array.from(leaseTermsList.querySelectorAll('li'))
+
+          const desiredLeaseTermOption = STEP_LEASE_TERMS.terms
+            ? leaseTermsOptions.find(o => o.dataset.value === STEP_LEASE_TERMS.terms)
+            : leaseTermsOptions.find(o => o.dataset.value === '12') // Default 12 months
+
+          if (!desiredLeaseTermOption) {
+            return reject(new Error(`Could not find lease term option ${STEP_LEASE_TERMS.terms}. Is it available?`))
+          }
+
+          desiredLeaseTermOption.click()
+          resolve()
+        })()
+      })
+    }, {
+      STEP_LEASE_TERMS
+    })
+  }
+
+  async function submit () {
+    await page.evaluate(() => {
+      return new Promise((resolve, reject) => {
+        (async () => {
+          await waitForSelector('button[type="submit"]')
+
+          const buttons = Array.from(document.querySelectorAll('button'))
+          const btnAgree = buttons.find((btn) => btn.textContent.includes('Continue'))
+
+          btnAgree.click()
+          resolve()
+        })()
+      })
+    })
+  }
+
   await page.waitForSelector('#move-in-date-label')
-  // await page.type('#move-in-date', USER_INFO_LEASE_TERMS.moveInDate)
 
-  // await page.waitForSelector('#lease-term')
-  // await page.type('#lease-term', USER_INFO_LEASE_TERMS.leaseTerm)
+  await selectUnit()
+  await selectLeaseTerm()
+  await submit()
+}
 
-  await wait(500)
+async function main () {
+  const browser = await puppeteer.launch({
+    headless: false
+  })
 
-  const btnOpenSelectUnit = await page.waitForSelector('button.MuiAutocomplete-popupIndicator')
+  const page = await browser.newPage()
 
-  await btnOpenSelectUnit.click()
+  await page.goto(WOODHOUSE_URL)
 
-  const optionsList = await page.waitForSelector('ul.MuiAutocomplete-listbox')
-  const options = await optionsList.$$('li')
+  await page.addScriptTag({
+    content: `${waitForSelector}`
+  })
 
-  // await wait(2000)
+  await page.setViewport({ width: 1080, height: 1024 })
 
-  await options[0].click()
+  await stepAccept(page)
+  await stepRentalApplication(page)
+  await stepCurrentAddress(page)
+  await stepLeaseTerms(page)
 
-  // Select lease term
-  const leaseTerm = await page.waitForSelector('#lease-term')
-  await leaseTerm.click()
+  await wait(500000000)
 
-  await wait(1000)
-
-  const leaseTermsList = await page.waitForSelector('#menu-lease_term ul')
-
-  await wait(1000)
-
-  const leaseTermOptions = await leaseTermsList.$$('li')
-  await leaseTermOptions[2].click()
-
-  await wait(1000)
-
-  const btnSubmit = await page.waitForSelector('button[type="submit"]')
-  await btnSubmit.click()
+  process.exit(0)
 
   // TODO: it's possible to select rental options now (add a person, gurantor, pet, parking, storage, wine cooler etc.)
 
