@@ -87,6 +87,9 @@ async function stepLeaseTerms (page, {
   unit,
   terms
 }) {
+  let selectedUnit = ''
+  let selectedTerms = ''
+
   async function selectUnit () {
     await page.evaluate((unit) => {
       return new Promise((resolve, reject) => {
@@ -108,6 +111,8 @@ async function stepLeaseTerms (page, {
 
             return reject(new Error(`Could not find unit option ${unit}. Is it available? These are available: ${possibleOptions}`))
           }
+
+          selectedUnit = desiredUnitOption.textContent
 
           desiredUnitOption.click()
           resolve()
@@ -140,6 +145,8 @@ async function stepLeaseTerms (page, {
             return reject(new Error(`Could not find lease term option ${terms}. Is it available? These are available: ${possibleOptions}`))
           }
 
+          selectedTerms = desiredLeaseTermOption.dataset.value
+
           desiredLeaseTermOption.click()
           resolve()
         })()
@@ -168,6 +175,11 @@ async function stepLeaseTerms (page, {
   await selectUnit()
   await selectLeaseTerm()
   await submit()
+
+  return {
+    selectedUnit,
+    selectedTerms
+  }
 }
 
 // TODO: make it possible possible to select rental options now (add a person, gurantor, pet, parking, storage, wine cooler etc.)
@@ -397,6 +409,11 @@ async function createApplicant ({
   terms,
   isHeadless = false
 }) {
+  const output = {
+    unit: '',
+    terms: ''
+  }
+
   const browser = await puppeteer.launch({
     headless: isHeadless === true ? 'new' : false,
     protocolTimeout: 5000000,
@@ -433,10 +450,13 @@ async function createApplicant ({
     zip
   })
 
-  await stepLeaseTerms(page, {
+  const stepLeaseTermsResponse = await stepLeaseTerms(page, {
     unit,
     terms
   })
+
+  output.terms = stepLeaseTermsResponse.selectedTerms
+  output.unit = stepLeaseTermsResponse.selectedUnit
 
   await stepSetupRentalProfile(page)
   await stepVerifyIncome(page)
@@ -447,7 +467,8 @@ async function createApplicant ({
   await stepPay(page)
   await stepPaymentSuccessful(page)
   await stepIdVerify(page)
-  await wait(500000000)
+
+  return output
 }
 
 module.exports = {
