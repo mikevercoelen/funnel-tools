@@ -2,7 +2,7 @@ const { createApplicant } = require('./createApplicant')
 const { createEmail } = require('./utils/generator')
 
 async function main () {
-  await createApplicant({
+  const options = {
     woodhouseUrl: 'http://woodhouse-pr1691.nestiostaging.com/6/welcome',
     firstName: 'John',
     lastName: 'Doe',
@@ -18,7 +18,11 @@ async function main () {
     zip: '80202',
     unit: '',
     terms: '12'
-  })
+  }
+
+  await createApplicant(options)
+
+  console.log(`Created applicant: ${options.email}, with password: ${options.password}`)
 }
 
 main()

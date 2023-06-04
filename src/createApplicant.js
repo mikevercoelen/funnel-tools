@@ -394,10 +394,11 @@ async function createApplicant ({
   state,
   zip,
   unit,
-  terms
+  terms,
+  isHeadless = false
 }) {
   const browser = await puppeteer.launch({
-    headless: false,
+    headless: isHeadless === true ? 'new' : false,
     protocolTimeout: 5000000,
     timeout: 500000
   })
