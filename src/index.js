@@ -9,6 +9,8 @@ async function main () {
 
   switch (task) {
     case Task.APPROVE_APPLICANT:
+      // TODO: Google Authentication is in between here, so need to figure out how to handle that
+
       return approveApplicant({
         isHeadless: options.isHeadless,
         chuckUrl: options.chuckUrl,
