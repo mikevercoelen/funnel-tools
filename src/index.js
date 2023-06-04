@@ -31,6 +31,17 @@ const STEP_LEASE_TERMS = {
   terms: '18'
 }
 
+const STEP_PAY = {
+  // TODO: for some reason, the card number needs a first digit that can be ignored
+  cardNumber: '44242424242424242',
+
+  // TODO: the first digit will always be a 0
+  expiry: '1229',
+
+  // TODO: needs an extra digit that can be ignored
+  cvc: '2222'
+}
+
 async function wait (ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
@@ -104,7 +115,9 @@ async function stepLeaseTerms (page) {
             : unitOptions[0]
 
           if (!desiredUnitOption) {
-            return reject(new Error(`Could not find unit option ${STEP_LEASE_TERMS.unit}. Is it available?`))
+            const possibleOptions = unitOptions.map(o => o.textContent).join(', ')
+
+            return reject(new Error(`Could not find unit option ${STEP_LEASE_TERMS.unit}. Is it available? These are available: ${possibleOptions}`))
           }
 
           desiredUnitOption.click()
@@ -256,14 +269,109 @@ async function stepPaymentTerms (page) {
         await pollUntilTrue(() => btnSubmit.disabled === false)
 
         btnSubmit.click()
+        resolve()
       })()
     })
   })
 }
 
+async function stepPay (page) {
+  async function selectPaymentMethod () {
+    await page.waitForSelector('#payment-method-selector')
+
+    await page.evaluate(() => {
+      return new Promise((resolve) => {
+        (async () => {
+          function openMenu () {
+            const paymentMethodSelector = document.querySelector('#payment-method-selector')
+            const e = new Event('keydown', {
+              bubbles: true
+            })
+
+            e.key = 'ArrowDown'
+            paymentMethodSelector.dispatchEvent(e)
+          }
+
+          async function selectCard () {
+            const paymentMethodOptionsList = await waitForSelector('.MuiPopover-root')
+            const paymentMethodOptions = Array.from(paymentMethodOptionsList.querySelectorAll('li'))
+            const cardOption = paymentMethodOptions.find(o => o.dataset.value === 'card')
+            cardOption.click()
+          }
+
+          function focusPaymentMethod () {
+            const paymentMethodSelector = document.querySelector('#payment-method-selector')
+            paymentMethodSelector.focus()
+          }
+
+          async function waitForCreditcardNumber () {
+            // wait for an element on the page that has label content "Credit/Debit Card Number"
+            return pollUntilTrue(() => {
+              const labels = Array.from(document.querySelectorAll('label'))
+              const creditCardNumberLabel = labels.find(l => l.textContent.includes('Credit/Debit Card Number'))
+              return !!creditCardNumberLabel
+            })
+          }
+
+          openMenu()
+          await selectCard()
+          await waitForCreditcardNumber()
+          focusPaymentMethod()
+
+          resolve()
+        })()
+      })
+    })
+
+    await page.waitForSelector('.StripeElement')
+
+    // TODO: this number might be flaky, depending on the network / speed of machine?
+    await wait(1500)
+
+    await page.keyboard.press('Tab')
+    await page.keyboard.type(STEP_PAY.cardNumber, {
+      delay: 150
+    })
+
+    await page.keyboard.press('Tab')
+    await page.keyboard.type(STEP_PAY.expiry, {
+      delay: 50
+    })
+
+    await page.keyboard.press('Tab')
+    await page.keyboard.type(STEP_PAY.cvc, {
+      delay: 50
+    })
+
+    await page.keyboard.press('Tab')
+    await page.keyboard.press('Tab')
+    await page.keyboard.press('Enter')
+  }
+
+  await selectPaymentMethod()
+}
+
+async function stepPaymentSuccessful (page) {
+  await page.waitForSelector('img[alt="receipt"]')
+
+  await page.evaluate(() => {
+    return new Promise((resolve) => {
+      const btnSubmit = document.querySelector('button[type="submit"]')
+      btnSubmit.click()
+      resolve()
+    })
+  })
+}
+
+async function stepIdVerify (page) {
+
+}
+
 async function main () {
   const browser = await puppeteer.launch({
-    headless: false
+    headless: false,
+    protocolTimeout: 5000000,
+    timeout: 500000
   })
 
   const page = await browser.newPage()
@@ -286,6 +394,9 @@ async function main () {
   await stepScreeningDetails(page)
   await stepApplicationPayments(page)
   await stepPaymentTerms(page)
+  await stepPay(page)
+  await stepPaymentSuccessful(page)
+  await stepIdVerify(page)
 
   await wait(500000000)
 }
