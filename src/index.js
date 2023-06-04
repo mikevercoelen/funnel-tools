@@ -21,9 +21,7 @@ async function main () {
     terms: '12'
   }
 
-  const { unit, terms } = await createApplicant(options)
-
-  console.log(`Created applicant: ${options.email}, with password: ${options.password}. Unit: ${unit}, Terms: ${terms}`)
+  await createApplicant(options)
 }
 
 main()

@@ -1,5 +1,6 @@
 const puppeteer = require('puppeteer')
 const { waitForSelector, pollUntilTrue } = require('./utils/browser')
+const { info, success } = require('./utils/log')
 
 const STEP_PAY = {
   // TODO: for some reason, the card number needs a first digit that can be ignored
@@ -87,9 +88,6 @@ async function stepLeaseTerms (page, {
   unit,
   terms
 }) {
-  let selectedUnit = ''
-  let selectedTerms = ''
-
   async function selectUnit () {
     await page.evaluate((unit) => {
       return new Promise((resolve, reject) => {
@@ -112,10 +110,8 @@ async function stepLeaseTerms (page, {
             return reject(new Error(`Could not find unit option ${unit}. Is it available? These are available: ${possibleOptions}`))
           }
 
-          selectedUnit = desiredUnitOption.textContent
-
           desiredUnitOption.click()
-          resolve()
+          resolve(desiredUnitOption.textContent)
         })()
       })
     }, unit)
@@ -145,10 +141,8 @@ async function stepLeaseTerms (page, {
             return reject(new Error(`Could not find lease term option ${terms}. Is it available? These are available: ${possibleOptions}`))
           }
 
-          selectedTerms = desiredLeaseTermOption.dataset.value
-
           desiredLeaseTermOption.click()
-          resolve()
+          resolve(desiredLeaseTermOption.dataset.value)
         })()
       })
     }, terms)
@@ -172,8 +166,8 @@ async function stepLeaseTerms (page, {
 
   await page.waitForSelector('#move-in-date-label')
 
-  await selectUnit()
-  await selectLeaseTerm()
+  const selectedUnit = await selectUnit()
+  const selectedTerms = await selectLeaseTerm()
   await submit()
 
   return {
@@ -414,6 +408,8 @@ async function createApplicant ({
     terms: ''
   }
 
+  info('Launching browser')
+
   const browser = await puppeteer.launch({
     headless: isHeadless === true ? 'new' : false,
     protocolTimeout: 5000000,
@@ -430,7 +426,11 @@ async function createApplicant ({
 
   await page.setViewport({ width: 1080, height: 1024 })
 
+  info('Browser launched')
+
   await stepAccept(page)
+
+  info('✅ Accepted terms')
 
   await stepRentalApplication(page, {
     firstName,
@@ -442,6 +442,8 @@ async function createApplicant ({
     acceptsTexts
   })
 
+  info('✅ Rental application')
+
   await stepCurrentAddress(page, {
     address,
     floor,
@@ -450,23 +452,54 @@ async function createApplicant ({
     zip
   })
 
+  info('✅ Current address')
+
   const stepLeaseTermsResponse = await stepLeaseTerms(page, {
     unit,
     terms
   })
 
+  info('✅ Lease terms')
+
   output.terms = stepLeaseTermsResponse.selectedTerms
   output.unit = stepLeaseTermsResponse.selectedUnit
 
   await stepSetupRentalProfile(page)
+
+  info('✅ Rental profile')
+
   await stepVerifyIncome(page)
+
+  info('✅ Verified income')
+
   await stepConfirmIncome(page)
+
+  info('✅ Confirmed income')
+
   await stepScreeningDetails(page)
+
+  info('✅ Screening details')
+
   await stepApplicationPayments(page)
+
+  info('✅ Application payments')
+
   await stepPaymentTerms(page)
+
+  info('✅ Payment terms')
+
   await stepPay(page)
   await stepPaymentSuccessful(page)
+
+  info('✅ Payment')
+
   await stepIdVerify(page)
+
+  info('✅ ID verified')
+
+  await browser.close()
+
+  success(`✅ Created applicant: ${email}, with password: ${password}. Unit: ${output.unit}, Terms: ${output.terms}`)
 
   return output
 }
