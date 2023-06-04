@@ -364,7 +364,32 @@ async function stepPaymentSuccessful (page) {
 }
 
 async function stepIdVerify (page) {
+  async function requestIdVerify () {
+    await page.evaluate(() => {
+      return new Promise((resolve) => {
+        (async () => {
+          await pollUntilTrue(() => {
+            const buttons = Array.from(document.querySelectorAll('button'))
+            const btnAgree = buttons.find((btn) => btn.textContent.includes('Request Text'))
+            return !!btnAgree
+          })
 
+          const btnSubmit = document.querySelector('button[type="submit"]')
+          btnSubmit.click()
+          resolve()
+        })()
+      })
+    })
+  }
+
+  async function submitVerifyCode () {
+    await page.waitForSelector('input[name="code"]')
+    await page.type('input[name="code"]', '12345')
+    await page.keyboard.press('Enter')
+  }
+
+  await requestIdVerify()
+  await submitVerifyCode()
 }
 
 async function main () {
