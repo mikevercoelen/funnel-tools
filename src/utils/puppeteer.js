@@ -1,8 +1,8 @@
-import puppeteer from 'puppeteer'
-import { pollUntilTrue, waitForSelector } from './browser'
-import { info } from './log'
+const puppeteer = require('puppeteer')
+const { waitForSelector, pollUntilTrue } = require('./browser')
+const { info } = require('./log')
 
-export async function createBrowserWithPage (isHeadless, url) {
+async function createBrowserWithPage (isHeadless, url) {
   info(`Launching browser to ${url}`)
 
   const browser = await puppeteer.launch({

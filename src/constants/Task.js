@@ -1,0 +1,8 @@
+const Task = {
+  CREATE_APPLICANT: 'CREATE_APPLICANT',
+  APPROVE_APPLICANT: 'APPROVE_APPLICANT'
+}
+
+module.exports = {
+  Task
+}

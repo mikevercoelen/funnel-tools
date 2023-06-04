@@ -1,5 +1,6 @@
 {
   "reject": [
+    "inquirer",
     "chalk"
   ]
 }
