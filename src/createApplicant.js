@@ -48,6 +48,7 @@ async function stepRentalApplication (page, {
   password,
   acceptsTexts
 }) {
+  await page.waitForNetworkIdle()
   await page.waitForSelector('input[name="first_name"]')
 
   await page.type('input[name="first_name"]', firstName)
@@ -71,6 +72,7 @@ async function stepCurrentAddress (page, {
   state,
   zip
 }) {
+  await page.waitForNetworkIdle()
   await page.waitForSelector('input[name="address_street"]')
 
   await page.type('input[name="address_street"]', address)
@@ -89,6 +91,8 @@ async function stepLeaseTerms (page, {
   terms
 }) {
   async function selectUnit () {
+    await page.waitForNetworkIdle()
+
     await page.evaluate((unit) => {
       return new Promise((resolve, reject) => {
         (async () => {
@@ -118,6 +122,8 @@ async function stepLeaseTerms (page, {
   }
 
   async function selectLeaseTerm () {
+    await page.waitForNetworkIdle()
+
     await page.evaluate((terms) => {
       return new Promise((resolve, reject) => {
         (async () => {
@@ -178,6 +184,7 @@ async function stepLeaseTerms (page, {
 
 // TODO: make it possible possible to select rental options now (add a person, gurantor, pet, parking, storage, wine cooler etc.)
 async function stepSetupRentalProfile (page) {
+  await page.waitForNetworkIdle()
   await page.waitForSelector('#co_applicants')
 
   await page.evaluate(() => {
@@ -270,6 +277,7 @@ async function stepPaymentTerms (page) {
 
 async function stepPay (page) {
   async function selectPaymentMethod () {
+    await page.waitForNetworkIdle()
     await page.waitForSelector('#payment-method-selector')
 
     await page.evaluate(() => {
@@ -345,6 +353,7 @@ async function stepPay (page) {
 }
 
 async function stepPaymentSuccessful (page) {
+  await page.waitForNetworkIdle()
   await page.waitForSelector('img[alt="receipt"]')
 
   await page.evaluate(() => {
@@ -358,6 +367,8 @@ async function stepPaymentSuccessful (page) {
 
 async function stepIdVerify (page) {
   async function requestIdVerify () {
+    await page.waitForNetworkIdle()
+
     await page.evaluate(() => {
       return new Promise((resolve) => {
         (async () => {
@@ -376,6 +387,8 @@ async function stepIdVerify (page) {
   }
 
   async function submitVerifyCode () {
+    await page.waitForNetworkIdle()
+
     await page.waitForSelector('input[name="code"]')
     await page.type('input[name="code"]', '12345')
     await page.keyboard.press('Enter')
@@ -383,6 +396,42 @@ async function stepIdVerify (page) {
 
   await requestIdVerify()
   await submitVerifyCode()
+}
+
+async function getHasVerifyIncomeStep (page) {
+  await page.waitForNetworkIdle()
+
+  await page.evaluate(() => {
+    return new Promise((resolve) => {
+      (async () => {
+        const h1s = Array.from(document.querySelectorAll('h1'))
+
+        const hasVerifyIncomeStep = h1s.some((h1) => {
+          return h1.textContent.includes('Verify')
+        })
+
+        resolve(hasVerifyIncomeStep)
+      })()
+    })
+  })
+}
+
+async function getHasVerifyIdentityStep (page) {
+  await page.waitForNetworkIdle()
+
+  await page.evaluate(() => {
+    return new Promise((resolve) => {
+      (async () => {
+        const h1s = Array.from(document.querySelectorAll('h1'))
+
+        const hasVerifyIdentityStep = h1s.some((h1) => {
+          return h1.textContent.includes('Hooray')
+        })
+
+        resolve(hasVerifyIdentityStep)
+      })()
+    })
+  })
 }
 
 async function createApplicant ({
@@ -450,13 +499,17 @@ async function createApplicant ({
 
   info('✅ Rental profile')
 
-  await stepVerifyIncome(page)
+  const hasVerifyIncomeStep = await getHasVerifyIncomeStep(page)
 
-  info('✅ Verified income')
+  if (hasVerifyIncomeStep) {
+    await stepVerifyIncome(page)
 
-  await stepConfirmIncome(page)
+    info('✅ Verified income')
 
-  info('✅ Confirmed income')
+    await stepConfirmIncome(page)
+
+    info('✅ Confirmed income')
+  }
 
   await stepScreeningDetails(page)
 
@@ -475,9 +528,13 @@ async function createApplicant ({
 
   info('✅ Payment')
 
-  await stepIdVerify(page)
+  const hasVerifyIdentiyStep = await getHasVerifyIdentityStep(page)
 
-  info('✅ ID verified')
+  if (hasVerifyIdentiyStep) {
+    await stepIdVerify(page)
+
+    info('✅ ID verified')
+  }
 
   await browser.close()
 
