@@ -457,6 +457,8 @@ async function createApplicant ({
     terms: ''
   }
 
+  info(`Creating applicant ${firstName} ${lastName} with email: ${email}`)
+
   const { page, browser } = await createBrowserWithPage(isHeadless, woodhouseUrl)
 
   await stepAccept(page)
