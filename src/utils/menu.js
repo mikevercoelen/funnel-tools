@@ -19,17 +19,25 @@ async function promptCreateApplicant () {
         name: 'Production',
         value: 'production'
       }]
+    },
+    {
+      type: 'input',
+      name: 'leaseSettingsId',
+      message: 'Lease settings ID? 160 for payments, 6 for default community, this is used to append to the Woodhouse URL',
+      default: '6'
     }
   ])
+
+  const { leaseSettingsId } = selectedOption
 
   let url
 
   switch (selectedOption.woodhouseUrl) {
     case 'mirror':
-      url = 'http://woodhouse-mirror-resapp-a.nestiostaging.com/6/welcome'
+      url = `http://woodhouse-mirror-resapp-a.nestiostaging.com/${leaseSettingsId}/welcome`
       break
     case 'production':
-      url = 'https://apply.funnelleasing.com/6/welcome'
+      url = `https://apply.funnelleasing.com/${leaseSettingsId}/welcome`
       break
     case 'staging':
       // eslint-disable-next-line no-case-declarations
@@ -42,7 +50,7 @@ async function promptCreateApplicant () {
         }
       ])
 
-      url = `http://woodhouse-pr${prId}.nestiostaging.com/6/welcome`
+      url = `http://woodhouse-pr${prId}.nestiostaging.com/${leaseSettingsId}/welcome`
       break
   }
 
@@ -96,7 +104,7 @@ async function promptCreateApplicant () {
   }
 
   if (options.woodhouseUrl === 'mirror') {
-    options.woodhouseUrl = 'http://woodhouse-mirror-resapp-a.nestiostaging.com/6/welcome'
+    options.woodhouseUrl = `http://woodhouse-mirror-resapp-a.nestiostaging.com/${leaseSettingsId}/welcome`
   }
 
   return {
